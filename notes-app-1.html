@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Notes">
+<meta name="theme-color" content="#1a1a18">
+<title>Notes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;1,8..60,300&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #1a1a18;
+    --surface: #222220;
+    --surface2: #2a2a28;
+    --border: #333330;
+    --accent: #c9a96e;
+    --accent2: #e8c97a;
+    --text: #e8e6df;
+    --text-dim: #8a8880;
+    --text-faint: #4a4a48;
+    --danger: #c0624a;
+    --radius: 14px;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Source Serif 4', serif;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+  }
+
+  #app {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  /* ── SCREENS ── */
+  .screen { display: none; flex-direction: column; height: 100%; }
+  .screen.active { display: flex; }
+
+  /* ── LIST SCREEN ── */
+  #list-header {
+    padding: 56px 24px 16px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  #list-header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  #list-header .note-count {
+    font-size: 13px;
+    color: var(--text-dim);
+    font-style: italic;
+    margin-bottom: 4px;
+  }
+
+  #search-bar {
+    flex-shrink: 0;
+    padding: 0 16px 12px;
+  }
+
+  #search-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 16px;
+    color: var(--text);
+    font-family: 'Source Serif 4', serif;
+    font-size: 15px;
+    outline: none;
+  }
+  #search-input::placeholder { color: var(--text-faint); }
+  #search-input:focus { border-color: var(--accent); }
+
+  #notes-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 16px 100px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .note-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    position: relative;
+    overflow: hidden;
+    animation: slideIn 0.2s ease;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .note-card:active { transform: scale(0.98); background: var(--surface2); }
+
+  .note-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--accent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .note-card:hover::before { opacity: 1; }
+
+  .note-card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .note-card-preview {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .note-card-meta {
+    font-size: 11px;
+    color: var(--text-faint);
+    margin-top: 8px;
+    font-style: italic;
+  }
+
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    text-align: center;
+    color: var(--text-faint);
+  }
+  .empty-state svg { margin-bottom: 16px; opacity: 0.4; }
+  .empty-state p { font-size: 15px; font-style: italic; line-height: 1.6; }
+
+  #new-btn {
+    position: fixed;
+    bottom: 28px;
+    right: 50%;
+    transform: translateX(50%);
+    max-width: calc(480px - 32px);
+    width: calc(100% - 32px);
+    background: var(--accent);
+    color: #1a1a18;
+    border: none;
+    border-radius: 14px;
+    padding: 16px;
+    font-family: 'Playfair Display', serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 4px 24px rgba(201,169,110,0.3);
+    transition: background 0.15s, transform 0.1s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #new-btn:active { transform: translateX(50%) scale(0.97); background: var(--accent2); }
+
+  /* ── EDIT SCREEN ── */
+  #edit-header {
+    padding: 56px 16px 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .icon-btn {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+    flex-shrink: 0;
+  }
+  .icon-btn:active { background: var(--surface2); color: var(--text); }
+
+  #back-btn { color: var(--accent); }
+
+  #title-input {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text);
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    font-weight: 700;
+    outline: none;
+    min-width: 0;
+  }
+  #title-input::placeholder { color: var(--text-faint); }
+
+  #delete-btn { color: var(--danger); }
+
+  #edit-meta {
+    flex-shrink: 0;
+    padding: 8px 24px;
+    font-size: 11px;
+    color: var(--text-faint);
+    font-style: italic;
+    border-bottom: 1px solid var(--border);
+  }
+
+  #body-input {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text);
+    font-family: 'Source Serif 4', serif;
+    font-size: 16px;
+    line-height: 1.75;
+    outline: none;
+    padding: 20px 24px 60px;
+    resize: none;
+    -webkit-overflow-scrolling: touch;
+    overflow-y: auto;
+  }
+  #body-input::placeholder { color: var(--text-faint); }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 10px 18px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-style: italic;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 100;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- LIST SCREEN -->
+  <div id="list-screen" class="screen active">
+    <div id="list-header">
+      <h1>Notes</h1>
+      <span class="note-count" id="note-count"></span>
+    </div>
+    <div id="search-bar">
+      <input id="search-input" type="search" placeholder="Search notes…" autocomplete="off" spellcheck="false">
+    </div>
+    <div id="notes-list"></div>
+    <button id="new-btn">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New Note
+    </button>
+  </div>
+
+  <!-- EDIT SCREEN -->
+  <div id="edit-screen" class="screen">
+    <div id="edit-header">
+      <button class="icon-btn" id="back-btn" aria-label="Back">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <input id="title-input" type="text" placeholder="Title…" maxlength="80">
+      <button class="icon-btn" id="delete-btn" aria-label="Delete note">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      </button>
+    </div>
+    <div id="edit-meta"></div>
+    <textarea id="body-input" placeholder="Start writing…" spellcheck="true"></textarea>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'pwa_notes_v1';
+let notes = [];
+let currentId = null;
+let saveTimer = null;
+
+// ── STORAGE ──
+function load() {
+  try { notes = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+  catch { notes = []; }
+}
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+}
+
+// ── HELPERS ──
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+
+function fmt(ts) {
+  const d = new Date(ts), now = new Date();
+  const diff = now - d;
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+  if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+  if (diff < 604800000) return Math.floor(diff / 86400000) + 'd ago';
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+// ── SCREENS ──
+function showList() {
+  document.getElementById('list-screen').classList.add('active');
+  document.getElementById('edit-screen').classList.remove('active');
+  currentId = null;
+  renderList();
+}
+
+function showEdit(id) {
+  document.getElementById('list-screen').classList.remove('active');
+  document.getElementById('edit-screen').classList.add('active');
+  currentId = id;
+  const note = notes.find(n => n.id === id);
+  document.getElementById('title-input').value = note ? note.title : '';
+  document.getElementById('body-input').value = note ? note.body : '';
+  updateMeta(note);
+  setTimeout(() => {
+    const b = document.getElementById('body-input');
+    if (!note || (!note.title && !note.body)) {
+      document.getElementById('title-input').focus();
+    } else {
+      b.focus();
+      b.setSelectionRange(b.value.length, b.value.length);
+    }
+  }, 100);
+}
+
+function updateMeta(note) {
+  const el = document.getElementById('edit-meta');
+  if (!note) { el.textContent = ''; return; }
+  el.textContent = note.updated ? 'Edited ' + fmt(note.updated) : 'New note';
+}
+
+// ── LIST RENDER ──
+function renderList(filter = '') {
+  const list = document.getElementById('notes-list');
+  const countEl = document.getElementById('note-count');
+  const q = filter.toLowerCase().trim();
+
+  const sorted = [...notes].sort((a, b) => (b.updated || b.created) - (a.updated || a.created));
+  const filtered = q ? sorted.filter(n =>
+    n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q)
+  ) : sorted;
+
+  countEl.textContent = notes.length === 0 ? '' :
+    notes.length === 1 ? '1 note' : notes.length + ' notes';
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty-state">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      <p>${q ? 'No notes match your search.' : 'No notes yet.\nTap + to write your first note.'}</p>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(n => {
+    const preview = n.body.trim().replace(/\s+/g, ' ').slice(0, 100);
+    return `<div class="note-card" data-id="${n.id}">
+      <div class="note-card-title">${esc(n.title || 'Untitled')}</div>
+      ${preview ? `<div class="note-card-preview">${esc(preview)}</div>` : ''}
+      <div class="note-card-meta">${fmt(n.updated || n.created)}</div>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('.note-card').forEach(card => {
+    card.addEventListener('click', () => showEdit(card.dataset.id));
+  });
+}
+
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── NOTE CRUD ──
+function newNote() {
+  const note = { id: uid(), title: '', body: '', created: Date.now(), updated: Date.now() };
+  notes.unshift(note);
+  save();
+  showEdit(note.id);
+}
+
+function autosave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveCurrentNote, 400);
+}
+
+function saveCurrentNote() {
+  if (!currentId) return;
+  const idx = notes.findIndex(n => n.id === currentId);
+  if (idx === -1) return;
+  notes[idx].title = document.getElementById('title-input').value.trim();
+  notes[idx].body = document.getElementById('body-input').value;
+  notes[idx].updated = Date.now();
+  save();
+  updateMeta(notes[idx]);
+}
+
+function deleteCurrentNote() {
+  if (!currentId) return;
+  const idx = notes.findIndex(n => n.id === currentId);
+  if (idx === -1) { showList(); return; }
+  const isEmpty = !notes[idx].title && !notes[idx].body;
+  if (!isEmpty && !confirm('Delete this note?')) return;
+  notes.splice(idx, 1);
+  save();
+  showToast('Note deleted');
+  showList();
+}
+
+// ── EVENTS ──
+document.getElementById('new-btn').addEventListener('click', newNote);
+document.getElementById('back-btn').addEventListener('click', () => {
+  saveCurrentNote();
+  // Remove empty unsaved notes
+  const idx = notes.findIndex(n => n.id === currentId);
+  if (idx !== -1 && !notes[idx].title && !notes[idx].body) {
+    notes.splice(idx, 1);
+    save();
+  }
+  showList();
+});
+document.getElementById('delete-btn').addEventListener('click', deleteCurrentNote);
+document.getElementById('title-input').addEventListener('input', autosave);
+document.getElementById('body-input').addEventListener('input', autosave);
+
+document.getElementById('search-input').addEventListener('input', e => {
+  renderList(e.target.value);
+});
+
+// Handle Android back button
+window.addEventListener('popstate', () => {
+  const editActive = document.getElementById('edit-screen').classList.contains('active');
+  if (editActive) { saveCurrentNote(); showList(); }
+});
+document.getElementById('edit-screen').addEventListener('animationstart', () => {
+  history.pushState({ screen: 'edit' }, '');
+});
+
+// ── INIT ──
+load();
+renderList();
+</script>
+</body>
+</html>
